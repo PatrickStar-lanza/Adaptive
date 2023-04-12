@@ -9,7 +9,7 @@ import pickle
 from utils import coco_eval, to_var
 from data_loader import get_loader 
 from adaptive import Encoder2Decoder
-from build_vocab import Vocabulary
+from vocabulary import Vocabulary
 from torch.autograd import Variable 
 from torchvision import transforms
 from torch.nn.utils.rnn import pack_padded_sequence
@@ -99,12 +99,12 @@ def main(args):
             # Decay the learning rate
             learning_rate = args.learning_rate * decay_factor
         
-        print 'Learning Rate for Epoch %d: %.6f'%( epoch, learning_rate )
+        print ('Learning Rate for Epoch %d: %.6f'%( epoch, learning_rate ))
 
         optimizer = torch.optim.Adam( params, lr=learning_rate, betas=( args.alpha, args.beta ) )
 
         # Language Modeling Training
-        print '------------------Training for Epoch %d----------------'%( epoch )
+        print ('------------------Training for Epoch %d----------------'%( epoch ))
         for i, (images, captions, lengths, _, _ ) in enumerate( data_loader ):
 
             # Set mini-batch dataset
@@ -136,17 +136,17 @@ def main(args):
 
             # Print log info
             if i % args.log_step == 0:
-                print 'Epoch [%d/%d], Step [%d/%d], CrossEntropy Loss: %.4f, Perplexity: %5.4f'%( epoch, 
+                print ('Epoch [%d/%d], Step [%d/%d], CrossEntropy Loss: %.4f, Perplexity: %5.4f'%( epoch, 
                                                                                                  args.num_epochs, 
                                                                                                  i, total_step, 
-                                                                                                 loss.data[0],
-                                                                                                 np.exp( loss.data[0] ) )  
+                                                                                                 loss.item(),
+                                                                                                 np.exp( loss.item( ) ) ) )
                 
         # Save the Adaptive Attention model after each epoch
+          
         torch.save( adaptive.state_dict(), 
-                    os.path.join( args.model_path, 
-                    'adaptive-%d.pkl'%( epoch ) ) )          
-      
+            os.path.join( args.model_path, 
+            'adaptive-%d.pkl'%( epoch ) ) )
         
         # Evaluation on validation set        
         cider = coco_eval( adaptive, args, epoch )
@@ -164,8 +164,8 @@ def main(args):
             # Test if there is improvement, if not do early stopping
             if last_6_max != best_cider:
                 
-                print 'No improvement with CIDEr in the last 6 epochs...Early stopping triggered.'
-                print 'Model of best epoch #: %d with CIDEr score %.2f'%( best_epoch, best_cider )
+                print ('No improvement with CIDEr in the last 6 epochs...Early stopping triggered.')
+                print ('Model of best epoch #: %d with CIDEr score %.2f'%( best_epoch, best_cider ))
                 break
             
             
@@ -173,19 +173,19 @@ if __name__ == '__main__':
     
     parser = argparse.ArgumentParser()
     parser.add_argument( '-f', default='self', help='To make it runnable in jupyter' )
-    parser.add_argument( '--model_path', type=str, default='./models',
+    parser.add_argument( '--model_path', type=str, default='./data/models',
                          help='path for saving trained models')
     parser.add_argument('--crop_size', type=int, default=224 ,
                         help='size for randomly cropping images')
     parser.add_argument('--vocab_path', type=str, default='./data/vocab.pkl',
                         help='path for vocabulary wrapper')
-    parser.add_argument('--image_dir', type=str, default='./data/resized' ,
+    parser.add_argument('--image_dir', type=str, default='./resized' ,
                         help='directory for resized training images')
     parser.add_argument('--caption_path', type=str,
-                        default='./data/annotations/karpathy_split_train.json',
+                        default='./data/annotations_trainval2014/annotations/karpathy_split_train.json',
                         help='path for train annotation json file')
-    parser.add_argument('--caption_val_path', type=str,
-                        default='./data/annotations/karpathy_split_val.json',
+    parser.add_argument('--caption_val_path', type=str, #dir *.ckpt
+                        default='./data/annotations_trainval2014/annotations/karpathy_split_val.json',
                         help='path for validation annotation json file')
     parser.add_argument('--log_step', type=int, default=10,
                         help='step size for printing log info')
@@ -231,7 +231,7 @@ if __name__ == '__main__':
     
     args = parser.parse_args()
     
-    print '------------------------Model and Training Details--------------------------'
+    print('------------------------Model and Training Details--------------------------')
     print(args)
     
     # Start training
