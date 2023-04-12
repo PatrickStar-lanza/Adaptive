@@ -11,7 +11,7 @@ from torchvision import transforms, datasets
 from coco.pycocotools.coco import COCO
 from coco.pycocoevalcap.eval import COCOEvalCap
 import matplotlib.pyplot as plt
-
+from torch.utils.data import Dataset
 # Variable wrapper
 def to_var(x, volatile=False):
     '''
@@ -93,8 +93,14 @@ class CocoEvalLoader( datasets.ImageFolder ):
             img = self.transform( img )
 
         return img, img_id, filename
-
+        
+    def __len__(self):
+        return len(self.imgs)
 # MSCOCO Evaluation function
+results_dir = "results"
+if not os.path.exists(results_dir):
+    os.makedirs(results_dir)
+    
 def coco_eval( model, args, epoch ):
     
     '''
@@ -107,7 +113,7 @@ def coco_eval( model, args, epoch ):
     
     # Validation images are required to be resized to 224x224 already
     transform = transforms.Compose([ 
-        transforms.Scale( (args.crop_size, args.crop_size) ),
+        transforms.Resize( (args.crop_size, args.crop_size) ),
         transforms.ToTensor(), 
         transforms.Normalize((0.485, 0.456, 0.406), 
                              (0.229, 0.224, 0.225))])
@@ -125,12 +131,16 @@ def coco_eval( model, args, epoch ):
     
     # Generated captions to be compared with GT
     results = []
-    print '---------------------Start evaluation on MS-COCO dataset-----------------------'
+    print ('---------------------Start evaluation on MS-COCO dataset-----------------------')
+    
     for i, (images, image_ids, _ ) in enumerate( eval_data_loader ):
-        
+        # Add a print statement to show progress in the loop
+        print(f'Processing batch {i+1} out of {len(eval_data_loader)}')
         images = to_var( images )
         generated_captions, _, _ = model.sampler( images )
-        
+        # Disp evaluation process
+        if (i+1) % 10 == 0:
+            print('[%d/%d]' % ((i+1), len(eval_data_loader)))
         if torch.cuda.is_available():
             captions = generated_captions.cpu().data.numpy()
         else:
@@ -157,10 +167,11 @@ def coco_eval( model, args, epoch ):
         
         # Disp evaluation process
         if (i+1) % 10 == 0:
-            print '[%d/%d]'%( (i+1),len( eval_data_loader ) ) 
+            print ('[%d/%d]'%( (i+1),len( eval_data_loader ) ) )
             
             
-    print '------------------------Caption Generated-------------------------------------'
+    print ('------------------------Caption Generated-------------------------------------')
+    
             
     # Evaluate the results based on the COCO API
     resFile = 'results/mixed-' + str( epoch ) + '.json'
@@ -176,10 +187,10 @@ def coco_eval( model, args, epoch ):
     
     # Get CIDEr score for validation evaluation
     cider = 0.
-    print '-----------Evaluation performance on MS-COCO validation dataset for Epoch %d----------'%( epoch )
+    print ('-----------Evaluation performance on MS-COCO validation dataset for Epoch %d----------'%( epoch ))
     for metric, score in cocoEval.eval.items():
         
-        print '%s: %.4f'%( metric, score )
+        print ('%s: %.4f'%( metric, score ))
         if metric == 'CIDEr':
             cider = score
             
